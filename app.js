@@ -3,6 +3,7 @@ let mainDeck = [];
 let extraDeck = [];
 let sideDeck = [];
 let cardData = {}; // Store card data with IDs as keys
+let selectedCardNames = new Set(); // Store selected card names
 
 // Handle file upload and parsing
 const ydkForm = document.getElementById('ydk-form');
@@ -105,6 +106,8 @@ function fetchCardDetails() {
       }
       // Cache the card data
       localStorage.setItem('cardData', JSON.stringify(cardData));
+      // Recalculate probabilities after loading card details
+      calculateProbabilities();
     };
 
     fetchSequentially();
@@ -228,6 +231,7 @@ function clearYDK() {
   sideDeck = [];
   cardCategories = {};
   cardData = {};
+  selectedCardNames.clear();
 
   document.getElementById('main-deck-size').innerText = 0;
   document.getElementById('extra-deck-size').innerText = 0;
@@ -316,19 +320,19 @@ function filterCardsForCombination() {
   const cardSelectionDiv = document.getElementById('card-selection');
   cardSelectionDiv.innerHTML = ''; // Clear previous cards
 
-  // Display all cards initially
-  const allCards = mainDeck.map(cardId => cardData[cardId]);
+  // Display all unique cards initially
+  const uniqueCards = [...new Set(mainDeck.map(cardId => cardData[cardId]))];
 
   // Filter cards if a category is selected
   const filteredCards = filterCategory
-    ? allCards.filter(card => cardCategories[card.name] === filterCategory)
-    : allCards;
+    ? uniqueCards.filter(card => cardCategories[card.name] === filterCategory)
+    : uniqueCards;
 
   // Display cards with images for selection
   filteredCards.forEach(card => {
     const cardHTML = `
-      <div class="col-1">
-        <img src="${card.card_images[0].image_url}" class="card-img-top" alt="${card.name}" onclick="toggleCardSelection(this)">
+      <div class="col-1" style="width: 10% !important;">
+        <img src="${card.card_images[0].image_url}" class="card-img-top ${selectedCardNames.has(card.name) ? 'selected' : ''}" alt="${card.name}" onclick="toggleCardSelection(this)">
       </div>
     `;
     cardSelectionDiv.insertAdjacentHTML('beforeend', cardHTML);
@@ -337,15 +341,18 @@ function filterCardsForCombination() {
 
 // Toggle card selection
 function toggleCardSelection(imgElement) {
+  const cardName = imgElement.alt;
+  if (selectedCardNames.has(cardName)) {
+    selectedCardNames.delete(cardName);
+  } else {
+    selectedCardNames.add(cardName);
+  }
   imgElement.classList.toggle('selected');
 }
 
 // Handle the card selection for probability calculation
 function calculateCardCombinationProbability() {
-  const selectedCards = [];
-  document.querySelectorAll('#card-selection img.selected').forEach(img => {
-    selectedCards.push(img.alt);
-  });
+  const selectedCards = Array.from(selectedCardNames);
 
   const combinationSizeElement = document.getElementById('combination-size');
   const handSizeElement = document.getElementById('hand-size');
